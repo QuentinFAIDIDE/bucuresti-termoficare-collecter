@@ -31,23 +31,29 @@ type remoteStreetHeatingStatus struct {
 // get all heating stations: table of heating stations partitioned by city, sortkey geoId, with denumire, longitude and latitude
 // get history for one station: table of history for one station, partition key geoId, sort key timestamp descending, storing state, category, remediere, tip
 
+type StatesCounts struct {
+	Green  int `json:"Green"`
+	Yellow int `json:"Yellow"`
+	Red    int `json:"Red"`
+}
+
 type HeatingStation struct {
-	GeoId     int64
-	Name      string
-	Latitude  float64
-	Longitude float64
+	GeoId     int64   `json:"GeoID"`
+	Name      string  `json:"Name"`
+	Latitude  float64 `json:"Latitude"`
+	Longitude float64 `json:"Longitude"`
 }
 
 type HeatingStationStatus struct {
-	GeoId            int64
-	Name             string
-	FetchTime        time.Time
-	Status           string // working,issue,broken
-	IncidentType     string // remediare ACC
-	IncidentText     string // stare
-	EstimatedFixDate time.Time
-	Latitude         float64
-	Longitude        float64
+	GeoId            int64     `json:"GeoID"`
+	Name             string    `json:"Name"`
+	FetchTime        time.Time `json:"FetchTime"`
+	Status           string    `json:"Status"`       // working,issue,broken
+	IncidentType     string    `json:"IncidentType"` // remediare ACC
+	IncidentText     string    `json:"IncidentText"` // stare
+	EstimatedFixDate time.Time `json:"EstimatedFixDate"`
+	Latitude         float64   `json:"Latitude"`
+	Longitude        float64   `json:"Longitude"`
 }
 
 func (rss *remoteStreetHeatingStatus) generateLocationId() int64 {

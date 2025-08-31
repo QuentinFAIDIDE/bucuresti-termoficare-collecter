@@ -107,6 +107,7 @@ func TestExtractStreetStatusesFromPage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse error = %v", err)
 	}
+	firstGreenExpected.Category = "verde"
 	if !reflect.DeepEqual(firstGreenExpected, got[0]) {
 		t.Fatalf("extractStreetStatusesFromPage() returned unexpected first entry, got %+v, expected %+v", got[0], firstGreenExpected)
 	}
@@ -126,6 +127,7 @@ func TestExtractStreetStatusesFromPage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse error = %v", err)
 	}
+	firstYellowExpected.Category = "galben"
 	if !reflect.DeepEqual(firstYellowExpected, got[i]) {
 		t.Fatalf("extractStreetStatusesFromPage() returned unexpected first yellow entry, got %+v, expected %+v", got[i], firstYellowExpected)
 	}
@@ -141,6 +143,10 @@ func TestExtractStreetStatusesFromPage(t *testing.T) {
 	err = json.Unmarshal([]byte(`
 		{"stare":"Avarie apa calda  \/ CD - Apartine asociatiei","culoare":"#e0002b","denumire":"1 Stoian Militaru","longitudine":26.098421911171,"latitudine":44.399987462908,"tip":"Oprire ACC","remediere":"05.09.2025 20:00"}`,
 	), &firstRedExpected)
+	if err != nil {
+		t.Fatalf("parse error = %v", err)
+	}
+	firstRedExpected.Category = "rosu"
 	if !reflect.DeepEqual(firstRedExpected, got[i]) {
 		t.Fatalf("extractStreetStatusesFromPage() returned unexpected first red entry, got %+v, expected %+v", got[i], firstRedExpected)
 	}

@@ -1,14 +1,18 @@
 package scrapper
 
 import (
+	"crypto/md5"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 // RemoteStreetHeatingSremoteStreetHeatingStatustatus is a structure that mirrors
@@ -22,10 +26,84 @@ type remoteStreetHeatingStatus struct {
 	Longitudine float64 `json:"longitudine"`
 	Latitudine  float64 `json:"latitudine"`
 	Category    string  // verde, galben, rosu
+	FetchTime   time.Time
+}
+
+// requests per table:
+// get all heating stations: table of heating stations partitioned by city, sortkey geoId, with denumire, longitude and latitude
+// get history for one station: table of history for one station, partition key geoId, sort key timestamp descending, storing state, category, remediere, tip
+
+type HeatingStation struct {
+	GeoId     int64
+	Name      string
+	Latitude  float64
+	Longitude float64
+}
+
+type HeatingStationStatus struct {
+	GeoId            int64
+	Name             string
+	FetchTime        time.Time
+	Status           string // working,issue,broken
+	IncidentType     string // remediare ACC
+	IncidentText     string // stare
+	EstimatedFixDate time.Time
+	Latitude         float64
+	Longitude        float64
+}
+
+func (rss *remoteStreetHeatingStatus) generateLocationId() int64 {
+	locationStr := fmt.Sprintf("%.6f,%.6f", rss.Latitudine, rss.Longitudine)
+
+	h := md5.New()
+	io.WriteString(h, locationStr)
+	hash := int64(binary.BigEndian.Uint64(h.Sum(nil)))
+
+	return hash
+}
+
+func (rss *remoteStreetHeatingStatus) toHeatingStation() HeatingStation {
+	id := rss.generateLocationId()
+	return HeatingStation{
+		GeoId:     id,
+		Name:      rss.Denumire,
+		Latitude:  rss.Latitudine,
+		Longitude: rss.Longitudine,
+	}
+}
+
+func (rss *remoteStreetHeatingStatus) getEnglishStatus() string {
+	switch rss.Category {
+	case "verde":
+		return "working"
+	case "galben":
+		return "issue"
+	case "rosu":
+		return "broken"
+	default:
+		panic("unknown category: " + rss.Category)
+	}
+}
+
+func (rss *remoteStreetHeatingStatus) toHeatingStationStatus() HeatingStationStatus {
+	id := rss.generateLocationId()
+	return HeatingStationStatus{
+		GeoId:            id,
+		Name:             rss.Denumire,
+		FetchTime:        time.Now(), // TO CHANGE
+		Status:           rss.getEnglishStatus(),
+		IncidentType:     rss.Tip,
+		IncidentText:     rss.Stare,
+		EstimatedFixDate: time.Now(), // TO CHANGE
+		Latitude:         rss.Latitudine,
+		Longitude:        rss.Longitudine,
+	}
 }
 
 type TermoficareScrapper struct {
 	httpClient *http.Client
+	rawData    []remoteStreetHeatingStatus
+	fetchTime  time.Time
 }
 
 func NewTermoficareScrapper(proxyUrl string) (*TermoficareScrapper, error) {
@@ -49,7 +127,32 @@ func NewTermoficareScrapper(proxyUrl string) (*TermoficareScrapper, error) {
 	}, nil
 }
 
-func (t *TermoficareScrapper) GetStreetHeatingStatuses() ([]remoteStreetHeatingStatus, error) {
+func (t *TermoficareScrapper) PullData() (err error) {
+	t.fetchTime = time.Now()
+	t.rawData, err = t.getStreetHeatingStatuses()
+	return err
+}
+
+func (t *TermoficareScrapper) GetStatesCounts() (numGreen int, numYellow int, numRed int, err error) {
+	if len(t.rawData) == 0 {
+		return 0, 0, 0, errors.New("no data pulled")
+	}
+	for _, e := range t.rawData {
+		switch e.Category {
+		case "verde":
+			numGreen++
+		case "galben":
+			numYellow++
+		case "rosu":
+			numRed++
+		default:
+			return 0, 0, 0, fmt.Errorf("unknown category: %s", e.Category)
+		}
+	}
+	return numGreen, numYellow, numRed, nil
+}
+
+func (t *TermoficareScrapper) getStreetHeatingStatuses() ([]remoteStreetHeatingStatus, error) {
 
 	const hartaUrl = "https://www.cmteb.ro/harta_stare_sistem_termoficare_bucuresti.php"
 
@@ -64,10 +167,10 @@ func (t *TermoficareScrapper) GetStreetHeatingStatuses() ([]remoteStreetHeatingS
 		return nil, err
 	}
 
-	return extractStreetStatusesFromPage(string(body))
+	return extractStreetStatusesFromPage(string(body), t.fetchTime)
 }
 
-func extractStreetStatusesFromPage(webpageContent string) ([]remoteStreetHeatingStatus, error) {
+func extractStreetStatusesFromPage(webpageContent string, fetchTime time.Time) ([]remoteStreetHeatingStatus, error) {
 	var statuses []remoteStreetHeatingStatus
 
 	greenDatumsLine, yellowDatumsLine, redDaturmsLine, err := extractDatumsLines(webpageContent)
@@ -102,6 +205,12 @@ func extractStreetStatusesFromPage(webpageContent string) ([]remoteStreetHeating
 	for _, item := range currentItems {
 		item.Category = "rosu"
 		statuses = append(statuses, item)
+	}
+
+	for i := range statuses {
+		statuses[i].Latitudine = math.Round(statuses[i].Latitudine*1e6) / 1e6
+		statuses[i].Longitudine = math.Round(statuses[i].Longitudine*1e6) / 1e6
+		statuses[i].FetchTime = fetchTime
 	}
 
 	return statuses, nil

@@ -87,7 +87,7 @@ func TestSmokeScrapWebsite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewTermoficareScrapper() error = %v", err)
 	}
-	_, err = c.GetStreetHeatingStatuses()
+	_, err = c.getStreetHeatingStatuses()
 	if err != nil {
 		t.Fatal(err)
 	}

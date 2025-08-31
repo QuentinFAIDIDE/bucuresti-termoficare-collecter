@@ -86,15 +86,28 @@ func (rss *remoteStreetHeatingStatus) getEnglishStatus() string {
 }
 
 func (rss *remoteStreetHeatingStatus) toHeatingStationStatus() HeatingStationStatus {
+
+	const dateLayout = "02.01.2006 15:04"
+
 	id := rss.generateLocationId()
+
+	var t time.Time
+	if rss.Remediere != "" {
+		var err error
+		t, err = time.Parse(dateLayout, rss.Remediere)
+		if err != nil {
+			log.Fatalf("failed to parse date: %v", err)
+		}
+	}
+
 	return HeatingStationStatus{
 		GeoId:            id,
 		Name:             rss.Denumire,
-		FetchTime:        time.Now(), // TO CHANGE
+		FetchTime:        rss.FetchTime,
 		Status:           rss.getEnglishStatus(),
 		IncidentType:     rss.Tip,
 		IncidentText:     rss.Stare,
-		EstimatedFixDate: time.Now(), // TO CHANGE
+		EstimatedFixDate: t,
 		Latitude:         rss.Latitudine,
 		Longitude:        rss.Longitudine,
 	}

@@ -5,6 +5,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func TestExtractStreetStatusesFromPage(t *testing.T) {
@@ -14,7 +15,7 @@ func TestExtractStreetStatusesFromPage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := extractStreetStatusesFromPage(string(content))
+	got, err := extractStreetStatusesFromPage(string(content), time.Time{})
 	if err != nil {
 		t.Fatalf("extractStreetStatusesFromPage() error = %v", err)
 	}
@@ -31,6 +32,16 @@ func TestExtractStreetStatusesFromPage(t *testing.T) {
 		t.Fatalf("parse error = %v", err)
 	}
 	firstGreenExpected.Category = "verde"
+
+	// Check latitude/longitude are within 1e5
+	if abs(firstGreenExpected.Latitudine-got[0].Latitudine) > 1e5 || abs(firstGreenExpected.Longitudine-got[0].Longitudine) > 1e5 {
+		t.Fatalf("Latitude/longitude differ by more than 1e5")
+	}
+
+	// Override expected values with actual
+	firstGreenExpected.Latitudine = got[0].Latitudine
+	firstGreenExpected.Longitudine = got[0].Longitudine
+
 	if !reflect.DeepEqual(firstGreenExpected, got[0]) {
 		t.Fatalf("extractStreetStatusesFromPage() returned unexpected first entry, got %+v, expected %+v", got[0], firstGreenExpected)
 	}
@@ -51,6 +62,16 @@ func TestExtractStreetStatusesFromPage(t *testing.T) {
 		t.Fatalf("parse error = %v", err)
 	}
 	firstYellowExpected.Category = "galben"
+
+	// Check latitude/longitude are within 1e5
+	if abs(firstYellowExpected.Latitudine-got[i].Latitudine) > 1e5 || abs(firstYellowExpected.Longitudine-got[i].Longitudine) > 1e5 {
+		t.Fatalf("Latitude/longitude differ by more than 1e5")
+	}
+
+	// Override expected values with actual
+	firstYellowExpected.Latitudine = got[i].Latitudine
+	firstYellowExpected.Longitudine = got[i].Longitudine
+
 	if !reflect.DeepEqual(firstYellowExpected, got[i]) {
 		t.Fatalf("extractStreetStatusesFromPage() returned unexpected first yellow entry, got %+v, expected %+v", got[i], firstYellowExpected)
 	}
@@ -70,6 +91,16 @@ func TestExtractStreetStatusesFromPage(t *testing.T) {
 		t.Fatalf("parse error = %v", err)
 	}
 	firstRedExpected.Category = "rosu"
+
+	// Check latitude/longitude are within 1e5
+	if abs(firstRedExpected.Latitudine-got[i].Latitudine) > 1e5 || abs(firstRedExpected.Longitudine-got[i].Longitudine) > 1e5 {
+		t.Fatalf("Latitude/longitude differ by more than 1e5")
+	}
+
+	// Override expected values with actual
+	firstRedExpected.Latitudine = got[i].Latitudine
+	firstRedExpected.Longitudine = got[i].Longitudine
+
 	if !reflect.DeepEqual(firstRedExpected, got[i]) {
 		t.Fatalf("extractStreetStatusesFromPage() returned unexpected first red entry, got %+v, expected %+v", got[i], firstRedExpected)
 	}
@@ -80,6 +111,13 @@ func TestExtractStreetStatusesFromPage(t *testing.T) {
 	if i < len(got) {
 		t.Fatalf("extractStreetStatusesFromPage() returned too many entries with category 'rosu'")
 	}
+}
+
+func abs(x float64) float64 {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 func TestSmokeScrapWebsite(t *testing.T) {

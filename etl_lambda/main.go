@@ -8,15 +8,18 @@ import (
 	"github.com/QuentinFAIDIDE/bucuresti-termoficare-collecter/scrapper"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 )
 
 var (
-	errMissingEnvar                  = errors.New("missing environement variable")
-	scrapClient                      *scrapper.TermoficareScrapper
-	dbClient                         *dynamodb.Client
-	DYNAMODB_TABLE_RANKED_DAY_COUNTS string
-	DYNAMODB_TABLE_WORDS_DAY_COUNTS  string
+	errMissingEnvar           = errors.New("missing environement variable")
+	scrapClient               *scrapper.TermoficareScrapper
+	dbClient                  *dynamodb.Client
+	DYNAMODB_TABLE_DAY_COUNTS string
+	DYNAMODB_TABLE_STATIONS   string
+	DYNAMODB_TABLE_STATUSES   string
 )
 
 func HandleRequest(ctx context.Context, ev events.CloudWatchEvent) error {
@@ -39,7 +42,7 @@ func HandleRequest(ctx context.Context, ev events.CloudWatchEvent) error {
 		return err
 	}
 
-	greenCount, yellowCount, redCount, err := scrapClient.GetStatesCounts()
+	counts, err := scrapClient.GetStatesCounts()
 	if err != nil {
 		slog.Error("Unable to get states counts", "error_msg", err.Error())
 		return err
@@ -57,31 +60,54 @@ func HandleRequest(ctx context.Context, ev events.CloudWatchEvent) error {
 		return err
 	}
 
-	// TODO: push counts to a dynamodb table
+	countsDbItem, err := attributevalue.MarshalMap(counts)
+	if err != nil {
+		slog.Error("Unable to Marshal counts item", "error_msg", err.Error())
+		return err
+	}
+	putCountDbItemInput := &dynamodb.PutItemInput{
+		TableName: aws.String(DYNAMODB_TABLE_DAY_COUNTS),
+		Item:      countsDbItem,
+	}
+	_, err = dbClient.PutItem(ctx, putCountDbItemInput)
+	if err != nil {
+		slog.Error("Unable to write day count items", "error_msg", err.Error())
+		return err
+	}
 
-	// TODO: push all stations
-
-	// TODO: push all statuses
-
-	// This is an example of pushing some data to dynamodb
-	/*
-		perSrWordItem := models.DayCountsPerSubredditWordItem{}.WithRedditWordCount(ev.Subreddit, wc, yesterday)
-		av2, err := attributevalue.MarshalMap(perSrWordItem)
+	for _, station := range stations {
+		stationDbItem, err := attributevalue.MarshalMap(station)
 		if err != nil {
-			slog.Error("Unable to Marshal per subreddit word count item", "error_msg", err.Error())
+			slog.Error("Unable to Marshal station item", "error_msg", err.Error())
 			return err
 		}
-		putItemInput2 := &dynamodb.PutItemInput{
-			TableName: aws.String(DYNAMODB_TABLE_WORDS_DAY_COUNTS),
-			Item:      av2,
+		putStationDbItemInput := &dynamodb.PutItemInput{
+			TableName: aws.String(DYNAMODB_TABLE_STATIONS),
+			Item:      stationDbItem,
 		}
-		_, err = dbClient.PutItem(ctx, putItemInput2)
+		_, err = dbClient.PutItem(ctx, putStationDbItemInput)
 		if err != nil {
-			slog.Error("Unable to write per subreddit word count item", "error_msg", err.Error())
+			slog.Error("Unable to write station item", "error_msg", err.Error())
 			return err
 		}
-	*/
+	}
 
+	for _, status := range statuses {
+		statusDbItem, err := attributevalue.MarshalMap(status)
+		if err != nil {
+			slog.Error("Unable to Marshal status item", "error_msg", err.Error())
+			return err
+		}
+		putStatusDbItemInput := &dynamodb.PutItemInput{
+			TableName: aws.String(DYNAMODB_TABLE_STATUSES),
+			Item:      statusDbItem,
+		}
+		_, err = dbClient.PutItem(ctx, putStatusDbItemInput)
+		if err != nil {
+			slog.Error("Unable to write status item", "error_msg", err.Error())
+			return err
+		}
+	}
 	return nil
 }
 

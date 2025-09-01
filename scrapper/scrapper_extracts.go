@@ -3,25 +3,34 @@ package scrapper
 import (
 	"errors"
 	"fmt"
+	"time"
 )
 
-func (t *TermoficareScrapper) GetStatesCounts() (numGreen int, numYellow int, numRed int, err error) {
+type StationStatesCount struct {
+	Time      time.Time `json:"Time"`
+	NumGreen  int       `json:"numGreen"`
+	NumYellow int       `json:"numYellow"`
+	NumRed    int       `json:"numRed"`
+}
+
+func (t *TermoficareScrapper) GetStatesCounts() (ssc StationStatesCount, err error) {
 	if len(t.rawData) == 0 {
-		return 0, 0, 0, errors.New("no data pulled")
+		return ssc, errors.New("no data pulled")
 	}
 	for _, e := range t.rawData {
 		switch e.Category {
 		case "verde":
-			numGreen++
+			ssc.NumGreen++
 		case "galben":
-			numYellow++
+			ssc.NumYellow++
 		case "rosu":
-			numRed++
+			ssc.NumRed++
 		default:
-			return 0, 0, 0, fmt.Errorf("unknown category: %s", e.Category)
+			return ssc, fmt.Errorf("unknown category: %s", e.Category)
 		}
 	}
-	return numGreen, numYellow, numRed, nil
+	ssc.Time = t.fetchTime
+	return ssc, nil
 }
 
 func (t *TermoficareScrapper) GetHeatingStations() (states []HeatingStation, err error) {

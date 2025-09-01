@@ -81,7 +81,7 @@ func TestGetStatesCounts(t *testing.T) {
 				rawData: tt.rawData,
 			}
 
-			green, yellow, red, err := scrapper.GetStatesCounts()
+			ssc, err := scrapper.GetStatesCounts()
 
 			if tt.wantErr {
 				if err == nil {
@@ -98,14 +98,14 @@ func TestGetStatesCounts(t *testing.T) {
 				return
 			}
 
-			if green != tt.wantGreen {
-				t.Fatalf("green count = %d, want %d", green, tt.wantGreen)
+			if ssc.NumGreen != tt.wantGreen {
+				t.Fatalf("green count = %d, want %d", ssc.NumGreen, tt.wantGreen)
 			}
-			if yellow != tt.wantYellow {
-				t.Fatalf("yellow count = %d, want %d", yellow, tt.wantYellow)
+			if ssc.NumYellow != tt.wantYellow {
+				t.Fatalf("yellow count = %d, want %d", ssc.NumYellow, tt.wantYellow)
 			}
-			if red != tt.wantRed {
-				t.Fatalf("red count = %d, want %d", red, tt.wantRed)
+			if ssc.NumRed != tt.wantRed {
+				t.Fatalf("red count = %d, want %d", ssc.NumRed, tt.wantRed)
 			}
 		})
 	}

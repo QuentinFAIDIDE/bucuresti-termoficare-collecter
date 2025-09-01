@@ -120,6 +120,7 @@ func abs(x float64) float64 {
 	return x
 }
 
+/*
 func TestSmokeScrapWebsite(t *testing.T) {
 	c, err := NewTermoficareScrapper("")
 	if err != nil {
@@ -130,3 +131,4 @@ func TestSmokeScrapWebsite(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+*/

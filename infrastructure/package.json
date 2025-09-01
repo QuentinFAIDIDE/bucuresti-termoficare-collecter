@@ -1,0 +1,22 @@
+{
+  "name": "infrastructure",
+  "version": "1.0.0",
+  "description": "",
+  "main": "lib/app.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "jest",
+    "cdk": "cdk"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@types/node": "^24.3.0",
+    "aws-cdk-lib": "^2.213.0",
+    "constructs": "^10.4.2",
+    "typescript": "^5.9.2"
+  }
+}

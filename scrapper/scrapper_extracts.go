@@ -3,15 +3,7 @@ package scrapper
 import (
 	"errors"
 	"fmt"
-	"time"
 )
-
-type StationStatesCount struct {
-	Time      time.Time `json:"Time"`
-	NumGreen  int       `json:"numGreen"`
-	NumYellow int       `json:"numYellow"`
-	NumRed    int       `json:"numRed"`
-}
 
 func (t *TermoficareScrapper) GetStatesCounts() (ssc StationStatesCount, err error) {
 	if len(t.rawData) == 0 {
@@ -29,7 +21,7 @@ func (t *TermoficareScrapper) GetStatesCounts() (ssc StationStatesCount, err err
 			return ssc, fmt.Errorf("unknown category: %s", e.Category)
 		}
 	}
-	ssc.Time = t.fetchTime
+	ssc.Time = t.fetchTime.Unix()
 	return ssc, nil
 }
 

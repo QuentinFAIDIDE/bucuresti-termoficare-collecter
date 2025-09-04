@@ -31,29 +31,30 @@ type remoteStreetHeatingStatus struct {
 // get all heating stations: table of heating stations partitioned by city, sortkey geoId, with denumire, longitude and latitude
 // get history for one station: table of history for one station, partition key geoId, sort key timestamp descending, storing state, category, remediere, tip
 
-type StatesCounts struct {
-	Green  int `json:"Green"`
-	Yellow int `json:"Yellow"`
-	Red    int `json:"Red"`
+type StationStatesCount struct {
+	Time      int64 `dynamodbav:"Timestamp"`
+	NumGreen  int   `dynamodbav:"numGreen"`
+	NumYellow int   `dynamodbav:"numYellow"`
+	NumRed    int   `dynamodbav:"numRed"`
 }
 
 type HeatingStation struct {
-	GeoId     int64   `json:"GeoID"`
-	Name      string  `json:"Name"`
-	Latitude  float64 `json:"Latitude"`
-	Longitude float64 `json:"Longitude"`
+	GeoId     int64   `dynamodbav:"GeoId"`
+	Name      string  `dynamodbav:"Name"`
+	Latitude  float64 `dynamodbav:"Latitude"`
+	Longitude float64 `dynamodbav:"Longitude"`
 }
 
 type HeatingStationStatus struct {
-	GeoId            int64     `json:"GeoID"`
-	Name             string    `json:"Name"`
-	FetchTime        time.Time `json:"FetchTime"`
-	Status           string    `json:"Status"`       // working,issue,broken
-	IncidentType     string    `json:"IncidentType"` // remediare ACC
-	IncidentText     string    `json:"IncidentText"` // stare
-	EstimatedFixDate time.Time `json:"EstimatedFixDate"`
-	Latitude         float64   `json:"Latitude"`
-	Longitude        float64   `json:"Longitude"`
+	GeoId            int64   `dynamodbav:"GeoId"`
+	Name             string  `dynamodbav:"Name"`
+	FetchTime        int64   `dynamodbav:"Timestamp"`
+	Status           string  `dynamodbav:"Status"`       // working,issue,broken
+	IncidentType     string  `dynamodbav:"IncidentType"` // remediare ACC
+	IncidentText     string  `dynamodbav:"IncidentText"` // stare
+	EstimatedFixDate int64   `dynamodbav:"EstimatedFixDate"`
+	Latitude         float64 `dynamodbav:"Latitude"`
+	Longitude        float64 `dynamodbav:"Longitude"`
 }
 
 func (rss *remoteStreetHeatingStatus) generateLocationId() int64 {
@@ -114,6 +115,7 @@ func (rss *remoteStreetHeatingStatus) toHeatingStationStatus() HeatingStationSta
 	ensureLocationIsSet()
 
 	var t time.Time
+	var fixDateUnix int64
 	if rss.Remediere != "" {
 		var err error
 		tzMutex.RLock()
@@ -122,16 +124,17 @@ func (rss *remoteStreetHeatingStatus) toHeatingStationStatus() HeatingStationSta
 		if err != nil {
 			log.Fatalf("failed to parse date: %v", err)
 		}
+		fixDateUnix = t.Unix()
 	}
 
 	return HeatingStationStatus{
 		GeoId:            id,
 		Name:             rss.Denumire,
-		FetchTime:        rss.FetchTime,
+		FetchTime:        rss.FetchTime.Unix(),
 		Status:           rss.getEnglishStatus(),
 		IncidentType:     rss.Tip,
 		IncidentText:     rss.Stare,
-		EstimatedFixDate: t,
+		EstimatedFixDate: fixDateUnix,
 		Latitude:         rss.Latitudine,
 		Longitude:        rss.Longitudine,
 	}

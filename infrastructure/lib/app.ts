@@ -2,6 +2,7 @@
 import "source-map-support/register";
 import * as cdk from "aws-cdk-lib";
 import { DatabaseStack } from "./database-stack";
+import { EcrStack } from "./ecr-stack";
 import { LambdaStack } from "./lambda-stack";
 import { ScheduleStack } from "./schedule-stack";
 import { AlertsStack } from "./alerts-stack";
@@ -21,10 +22,16 @@ const databaseStack = new DatabaseStack(app, "BucharestTermoficareDatabase", {
   envPrefix,
 });
 
+const ecrStack = new EcrStack(app, "BucharestTermoficareEcr", {
+  env,
+  envPrefix,
+});
+
 const lambdaStack = new LambdaStack(app, "BucharestTermoficareLambda", {
   env,
   envPrefix,
   version,
+  ecrRepository: ecrStack.repository,
   stationsTable: databaseStack.stationsTable,
   dayCountsTable: databaseStack.dayCountsTable,
   statusHistoryTable: databaseStack.statusHistoryTable,

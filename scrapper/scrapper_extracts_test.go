@@ -283,10 +283,10 @@ func TestToHeatingStationStatus(t *testing.T) {
 			if result.Longitude != tt.input.Longitudine {
 				t.Errorf("Longitude = %f, want %f", result.Longitude, tt.input.Longitudine)
 			}
-			if tt.wantHasFixDate && result.EstimatedFixDate.IsZero() {
+			if tt.wantHasFixDate && result.EstimatedFixDate == 0 {
 				t.Errorf("Expected EstimatedFixDate to be set but got zero time")
 			}
-			if !tt.wantHasFixDate && !result.EstimatedFixDate.IsZero() {
+			if !tt.wantHasFixDate && result.EstimatedFixDate != 0 {
 				t.Errorf("Expected EstimatedFixDate to be zero but got %v", result.EstimatedFixDate)
 			}
 		})

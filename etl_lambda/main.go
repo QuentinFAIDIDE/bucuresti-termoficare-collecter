@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 
 	"github.com/QuentinFAIDIDE/bucuresti-termoficare-collecter/scrapper"
@@ -14,7 +13,6 @@ import (
 )
 
 var (
-	errMissingEnvar           = errors.New("missing environement variable")
 	scrapClient               *scrapper.TermoficareScrapper
 	dbClient                  *dynamodb.Client
 	DYNAMODB_TABLE_DAY_COUNTS string

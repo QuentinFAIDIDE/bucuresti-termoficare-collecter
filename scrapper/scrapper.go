@@ -41,7 +41,7 @@ func NewTermoficareScrapper(proxyUrl string) (*TermoficareScrapper, error) {
 }
 
 func (t *TermoficareScrapper) PullData() (err error) {
-	t.fetchTime = time.Now()
+	t.fetchTime = time.Now().UTC()
 	t.rawData, err = t.getStreetHeatingStatuses()
 	return err
 }

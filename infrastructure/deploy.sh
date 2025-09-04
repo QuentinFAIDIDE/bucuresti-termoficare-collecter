@@ -2,22 +2,19 @@
 set -e
 
 
-# Check if an argument is passed
-if [ $# -eq 0 ]; then
-    echo "Error: No argument provided"
-    echo "Usage: $0 <version_tag>"
+# Check if arguments are passed
+if [ $# -lt 2 ]; then
+    echo "Error: Missing arguments"
+    echo "Usage: $0 <version_tag> <environment>"
+    echo "Example: $0 v1.0.0 dev"
     exit 1
 fi
 
 VERSION_TAG=$1
-
-# Build Go Lambda
-cd ../etl_lambda
-GOOS=linux GOARCH=amd64 go build -o bootstrap main.go
-cd ../infrastructure
+ENVIRONMENT=$2
 
 # Get ECR repository URI
-REPO_URI=$(aws ecr describe-repositories --repository-names bucuresti-termoficare-lambda --query 'repositories[0].repositoryUri' --output text 2>/dev/null || echo "")
+REPO_URI=$(aws ecr describe-repositories --repository-names ${ENVIRONMENT}-bucuresti-termoficare-lambda --query 'repositories[0].repositoryUri' --output text 2>/dev/null || echo "")
 
 if [ -z "$REPO_URI" ]; then
     echo "ECR repository not found. Deploy CDK first to create it."
@@ -25,13 +22,13 @@ if [ -z "$REPO_URI" ]; then
 fi
 
 # Login to ECR
-aws ecr get-login-password --region $(aws configure get region) | docker login --username AWS --password-stdin $REPO_URI
-
-docker build -t $REPO_URI:VERSION_TAG .
-docker push $REPO_URI:VERSION_TAG
+aws ecr get-login-password --region $(aws configure get region) | podman login --username AWS --password-stdin $REPO_URI
 
 # Build and push Docker image
-docker build -t $REPO_URI:latest .
-docker push $REPO_URI:latest
+podman build -f ../etl_lambda.Dockerfile -t $REPO_URI:$VERSION_TAG ..
+podman push $REPO_URI:$VERSION_TAG
 
-echo "Image pushed to $REPO_URI:latest"
+podman build -f ../etl_lambda.Dockerfile -t $REPO_URI:latest ..
+podman push $REPO_URI:latest
+
+echo "Image pushed to $REPO_URI:$VERSION_TAG and $REPO_URI:latest"

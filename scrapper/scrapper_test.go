@@ -92,12 +92,10 @@ func TestExtractStreetStatusesFromPage(t *testing.T) {
 	}
 	firstRedExpected.Category = "rosu"
 
-	// Check latitude/longitude are within 1e5
 	if abs(firstRedExpected.Latitudine-got[i].Latitudine) > 1e5 || abs(firstRedExpected.Longitudine-got[i].Longitudine) > 1e5 {
 		t.Fatalf("Latitude/longitude differ by more than 1e5")
 	}
 
-	// Override expected values with actual
 	firstRedExpected.Latitudine = got[i].Latitudine
 	firstRedExpected.Longitudine = got[i].Longitudine
 

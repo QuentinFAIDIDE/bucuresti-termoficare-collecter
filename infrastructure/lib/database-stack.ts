@@ -21,6 +21,7 @@ export class DatabaseStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
+    // TODO: break this table into partitions by years
     this.dayCountsTable = new dynamodb.Table(this, "DayCountsTable", {
       tableName: `${props.envPrefix}-day-counts`,
       partitionKey: { name: "Timestamp", type: dynamodb.AttributeType.NUMBER },

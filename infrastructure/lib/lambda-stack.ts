@@ -21,7 +21,7 @@ export class LambdaStack extends cdk.Stack {
 
     this.lambdaFunction = new lambda.Function(this, "TermoficareLambda", {
       code: lambda.Code.fromEcrImage(props.ecrRepository, {
-        tagOrDigest: props.version,
+        tagOrDigest: `etl-${props.version}`,
       }),
       handler: lambda.Handler.FROM_IMAGE,
       runtime: lambda.Runtime.FROM_IMAGE,

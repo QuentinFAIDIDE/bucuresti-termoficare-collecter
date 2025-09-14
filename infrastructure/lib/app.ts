@@ -4,6 +4,7 @@ import * as cdk from "aws-cdk-lib";
 import { DatabaseStack } from "./database-stack";
 import { EcrStack } from "./ecr-stack";
 import { LambdaStack } from "./lambda-stack";
+import { ApiStack } from "./api-stack";
 import { ScheduleStack } from "./schedule-stack";
 import { AlertsStack } from "./alerts-stack";
 
@@ -42,6 +43,16 @@ new ScheduleStack(app, "BucharestTermoficareSchedule", {
   envPrefix,
   lambdaFunction: lambdaStack.lambdaFunction,
   scheduleExpression: "cron(0 3,9,15,20 * * ? *)", // UTC times
+});
+
+new ApiStack(app, "BucharestTermoficareApi", {
+  env,
+  envPrefix,
+  version,
+  ecrRepository: ecrStack.repository,
+  dayCountsTable: databaseStack.dayCountsTable,
+  stationsTable: databaseStack.stationsTable,
+  statusHistoryTable: databaseStack.statusHistoryTable,
 });
 
 if (envPrefix === "prod") {

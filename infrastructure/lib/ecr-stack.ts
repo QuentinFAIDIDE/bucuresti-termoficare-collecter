@@ -12,9 +12,10 @@ export class EcrStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: EcrStackProps) {
     super(scope, id, props);
 
-    this.repository = new ecr.Repository(this, 'LambdaRepository', {
-      repositoryName: `${props.envPrefix}-bucuresti-termoficare-lambda`,
+    this.repository = new ecr.Repository(this, 'Repository', {
+      repositoryName: `${props.envPrefix}-termoficare`,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+      emptyOnDelete: true,
     });
   }
 }

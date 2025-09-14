@@ -32,30 +32,30 @@ type remoteStreetHeatingStatus struct {
 // get history for one station: table of history for one station, partition key geoId, sort key timestamp descending, storing state, category, remediere, tip
 
 type StationStatesCount struct {
-	Time      int64 `dynamodbav:"Timestamp"`
-	NumGreen  int   `dynamodbav:"numGreen"`
-	NumYellow int   `dynamodbav:"numYellow"`
-	NumRed    int   `dynamodbav:"numRed"`
+	Time      int64 `json:"time" dynamodbav:"Timestamp"`
+	NumGreen  int   `json:"numGreen" dynamodbav:"numGreen"`
+	NumYellow int   `json:"numYellow" dynamodbav:"numYellow"`
+	NumRed    int   `json:"numRed" dynamodbav:"numRed"`
 }
 
 type HeatingStation struct {
-	GeoId      int64   `dynamodbav:"GeoId"`
-	Name       string  `dynamodbav:"Name"`
-	Latitude   float64 `dynamodbav:"Latitude"`
-	Longitude  float64 `dynamodbav:"Longitude"`
-	LastStatus string  `dynamodbav:"LastStatus"` // working,issue,broken
+	GeoId      int64   `json:"geoId" dynamodbav:"GeoId"`
+	Name       string  `json:"name" dynamodbav:"Name"`
+	Latitude   float64 `json:"latitude" dynamodbav:"Latitude"`
+	Longitude  float64 `json:"longitude" dynamodbav:"Longitude"`
+	LastStatus string  `json:"lastStatus" dynamodbav:"LastStatus"` // working,issue,broken
 }
 
 type HeatingStationStatus struct {
-	GeoId            int64   `dynamodbav:"GeoId"`
-	Name             string  `dynamodbav:"Name"`
-	FetchTime        int64   `dynamodbav:"Timestamp"`
-	Status           string  `dynamodbav:"Status"`       // working,issue,broken
-	IncidentType     string  `dynamodbav:"IncidentType"` // remediare ACC
-	IncidentText     string  `dynamodbav:"IncidentText"` // stare
-	EstimatedFixDate int64   `dynamodbav:"EstimatedFixDate"`
-	Latitude         float64 `dynamodbav:"Latitude"`
-	Longitude        float64 `dynamodbav:"Longitude"`
+	GeoId            int64   `json:"geoId" dynamodbav:"GeoId"`
+	Name             string  `json:"name" dynamodbav:"Name"`
+	FetchTime        int64   `json:"fetchTime" dynamodbav:"Timestamp"`
+	Status           string  `json:"status" dynamodbav:"Status"`             // working,issue,broken
+	IncidentType     string  `json:"incidentType" dynamodbav:"IncidentType"` // remediare ACC
+	IncidentText     string  `json:"incidentText" dynamodbav:"IncidentText"` // stare
+	EstimatedFixDate int64   `json:"estimatedFixDate" dynamodbav:"EstimatedFixDate"`
+	Latitude         float64 `json:"latitude" dynamodbav:"Latitude"`
+	Longitude        float64 `json:"longitude" dynamodbav:"Longitude"`
 }
 
 func (rss *remoteStreetHeatingStatus) generateLocationId() int64 {

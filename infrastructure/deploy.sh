@@ -14,7 +14,7 @@ VERSION_TAG=$1
 ENVIRONMENT=$2
 
 # Get ECR repository URI
-REPO_URI=$(aws ecr describe-repositories --repository-names ${ENVIRONMENT}-bucuresti-termoficare-lambda --query 'repositories[0].repositoryUri' --output text 2>/dev/null || echo "")
+REPO_URI=$(aws ecr describe-repositories --repository-names ${ENVIRONMENT}-termoficare --query 'repositories[0].repositoryUri' --output text 2>/dev/null || echo "")
 
 if [ -z "$REPO_URI" ]; then
     echo "ECR repository not found. Deploy CDK first to create it."
@@ -24,11 +24,30 @@ fi
 # Login to ECR
 aws ecr get-login-password --region $(aws configure get region) | podman login --username AWS --password-stdin $REPO_URI
 
-# Build and push Docker image
-podman build -f ../etl_lambda.Dockerfile -t $REPO_URI:$VERSION_TAG ..
-podman push $REPO_URI:$VERSION_TAG
+# Build and push ETL Lambda
+podman build -f ../etl_lambda.Dockerfile -t $REPO_URI:etl-$VERSION_TAG ..
+podman push $REPO_URI:etl-$VERSION_TAG
+podman build -f ../etl_lambda.Dockerfile -t $REPO_URI:etl-latest ..
+podman push $REPO_URI:etl-latest
 
-podman build -f ../etl_lambda.Dockerfile -t $REPO_URI:latest ..
-podman push $REPO_URI:latest
+# Build and push API Lambdas
+podman build -f ../get_counts_lambda.Dockerfile -t $REPO_URI:api-getcounts-$VERSION_TAG ..
+podman push $REPO_URI:api-getcounts-$VERSION_TAG
+podman build -f ../get_counts_lambda.Dockerfile -t $REPO_URI:api-getcounts-latest ..
+podman push $REPO_URI:api-getcounts-latest
 
-echo "Image pushed to $REPO_URI:$VERSION_TAG and $REPO_URI:latest"
+podman build -f ../get_stations_lambda.Dockerfile -t $REPO_URI:api-getstations-$VERSION_TAG ..
+podman push $REPO_URI:api-getstations-$VERSION_TAG
+podman build -f ../get_stations_lambda.Dockerfile -t $REPO_URI:api-getstations-latest ..
+podman push $REPO_URI:api-getstations-latest
+
+podman build -f ../get_station_details_lambda.Dockerfile -t $REPO_URI:api-getstationdetails-$VERSION_TAG ..
+podman push $REPO_URI:api-getstationdetails-$VERSION_TAG
+podman build -f ../get_station_details_lambda.Dockerfile -t $REPO_URI:api-getstationdetails-latest ..
+podman push $REPO_URI:api-getstationdetails-latest
+
+echo "Images pushed to $REPO_URI:"
+echo "ETL: etl-$VERSION_TAG and etl-latest"
+echo "API GetCounts: api-getcounts-$VERSION_TAG and api-getcounts-latest"
+echo "API GetStations: api-getstations-$VERSION_TAG and api-getstations-latest"
+echo "API GetStationDetails: api-getstationdetails-$VERSION_TAG and api-getstationdetails-latest"

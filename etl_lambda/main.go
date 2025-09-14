@@ -67,6 +67,7 @@ func HandleRequest(ctx context.Context, ev events.CloudWatchEvent) error {
 		TableName: aws.String(DYNAMODB_TABLE_DAY_COUNTS),
 		Item:      countsDbItem,
 	}
+	// TODO: break this table into partitions by years
 	_, err = dbClient.PutItem(ctx, putCountDbItemInput)
 	if err != nil {
 		slog.Error("Unable to write day count items", "error_msg", err.Error())

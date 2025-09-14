@@ -7,6 +7,17 @@ on:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - dockerfile: etl_lambda.Dockerfile
+            tag: etl
+          - dockerfile: get_counts_lambda.Dockerfile
+            tag: api-getcounts
+          - dockerfile: get_stations_lambda.Dockerfile
+            tag: api-getstations
+          - dockerfile: get_station_details_lambda.Dockerfile
+            tag: api-getstationdetails
 
     steps:
       - uses: actions/checkout@v4
@@ -25,13 +36,29 @@ jobs:
       - name: Build and push Docker image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: prod-bucuresti-termoficare-lambda
+          ECR_REPOSITORY: prod-termoficare
           IMAGE_TAG: ${{ github.event.release.tag_name }}
+          DOCKERFILE: ${{ matrix.dockerfile }}
+          TAG: ${{ matrix.tag }}
         run: |
-          docker build -f etl_lambda.Dockerfile -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker build -f etl_lambda.Dockerfile -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker build -f $DOCKERFILE -t $ECR_REGISTRY/$ECR_REPOSITORY:$TAG-$IMAGE_TAG .
+          docker build -f $DOCKERFILE -t $ECR_REGISTRY/$ECR_REPOSITORY:$TAG-latest .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$TAG-$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$TAG-latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-south-2
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

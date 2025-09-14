@@ -39,10 +39,11 @@ type StationStatesCount struct {
 }
 
 type HeatingStation struct {
-	GeoId     int64   `dynamodbav:"GeoId"`
-	Name      string  `dynamodbav:"Name"`
-	Latitude  float64 `dynamodbav:"Latitude"`
-	Longitude float64 `dynamodbav:"Longitude"`
+	GeoId      int64   `dynamodbav:"GeoId"`
+	Name       string  `dynamodbav:"Name"`
+	Latitude   float64 `dynamodbav:"Latitude"`
+	Longitude  float64 `dynamodbav:"Longitude"`
+	LastStatus string  `dynamodbav:"LastStatus"` // working,issue,broken
 }
 
 type HeatingStationStatus struct {
@@ -70,10 +71,11 @@ func (rss *remoteStreetHeatingStatus) generateLocationId() int64 {
 func (rss *remoteStreetHeatingStatus) toHeatingStation() HeatingStation {
 	id := rss.generateLocationId()
 	return HeatingStation{
-		GeoId:     id,
-		Name:      rss.Denumire,
-		Latitude:  rss.Latitudine,
-		Longitude: rss.Longitudine,
+		GeoId:      id,
+		Name:       rss.Denumire,
+		Latitude:   rss.Latitudine,
+		Longitude:  rss.Longitudine,
+		LastStatus: rss.getEnglishStatus(),
 	}
 }
 

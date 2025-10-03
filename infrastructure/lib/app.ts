@@ -42,7 +42,7 @@ new ScheduleStack(app, "BucharestTermoficareSchedule", {
   env,
   envPrefix,
   lambdaFunction: lambdaStack.lambdaFunction,
-  scheduleExpression: "cron(0 3,9,15,20 * * ? *)", // UTC times
+  scheduleExpression: "cron(0,30 * * * ? *)", // Every hour at minute 0 (UTC)
 });
 
 new ApiStack(app, "BucharestTermoficareApi", {

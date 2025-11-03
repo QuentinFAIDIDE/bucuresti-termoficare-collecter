@@ -8,7 +8,8 @@ import { Construct } from "constructs";
 
 interface AlertsStackProps extends cdk.StackProps {
   envPrefix: string;
-  lambdaFunction: lambda.Function;
+  etlLambdaFunction: lambda.Function;
+  streamProcessorFunction: lambda.Function;
   alertEmail: string;
 }
 
@@ -25,8 +26,8 @@ export class AlertsStack extends cdk.Stack {
     );
 
     const errorAlarm = new cloudwatch.Alarm(this, "LambdaErrorAlarm", {
-      alarmName: `${props.envPrefix}-termoficare-lambda-errors`,
-      metric: props.lambdaFunction.metricErrors({
+      alarmName: `${props.envPrefix}-etl-lambda-errors`,
+      metric: props.etlLambdaFunction.metricErrors({
         period: cdk.Duration.minutes(5),
       }),
       threshold: 1,
@@ -40,8 +41,8 @@ export class AlertsStack extends cdk.Stack {
       this,
       "LambdaMissingExecutionAlarm",
       {
-        alarmName: `${props.envPrefix}-termoficare-lambda-missing-execution`,
-        metric: props.lambdaFunction.metricInvocations({
+        alarmName: `${props.envPrefix}-etl-lambda-missing-execution`,
+        metric: props.etlLambdaFunction.metricInvocations({
           period: cdk.Duration.hours(12), // Slightly longer than 6h schedule
         }),
         threshold: 1,
@@ -53,5 +54,22 @@ export class AlertsStack extends cdk.Stack {
     missingExecutionAlarm.addAlarmAction(
       new cloudwatchActions.SnsAction(topic)
     );
+
+    // Stream processor alerts
+    const streamErrorAlarm = new cloudwatch.Alarm(
+      this,
+      "StreamProcessorErrorAlarm",
+      {
+        alarmName: `${props.envPrefix}-stream-processor-errors`,
+        metric: props.streamProcessorFunction.metricErrors({
+          period: cdk.Duration.minutes(5),
+        }),
+        threshold: 1,
+        evaluationPeriods: 1,
+        datapointsToAlarm: 1,
+        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+      }
+    );
+    streamErrorAlarm.addAlarmAction(new cloudwatchActions.SnsAction(topic));
   }
 }

@@ -63,7 +63,8 @@ if (envPrefix === "prod") {
   new AlertsStack(app, "BucharestTermoficareAlerts", {
     env,
     envPrefix,
-    lambdaFunction: lambdaStack.lambdaFunction,
+    etlLambdaFunction: lambdaStack.lambdaFunction,
+    streamProcessorFunction: databaseStack.streamProcessor,
     alertEmail,
   });
 }

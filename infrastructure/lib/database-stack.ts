@@ -16,6 +16,7 @@ export class DatabaseStack extends cdk.Stack {
   public readonly dayCountsTable: dynamodb.Table;
   public readonly statusHistoryTable: dynamodb.Table;
   public readonly backupBucket: s3.Bucket;
+  public readonly streamProcessor: lambda.Function;
 
   constructor(scope: Construct, id: string, props: DatabaseStackProps) {
     super(scope, id, props);
@@ -60,7 +61,7 @@ export class DatabaseStack extends cdk.Stack {
     });
 
     // Lambda to process DynamoDB streams and write to S3
-    const streamProcessor = new lambda.Function(this, "StreamProcessor", {
+    this.streamProcessor = new lambda.Function(this, "StreamProcessor", {
       runtime: lambda.Runtime.PYTHON_3_11,
       handler: "stations_ddb_stream_backup.lambda_handler",
       code: lambda.Code.fromAsset("resources"),
@@ -71,10 +72,10 @@ export class DatabaseStack extends cdk.Stack {
     });
 
     // Grant S3 permissions
-    this.backupBucket.grantWrite(streamProcessor);
+    this.backupBucket.grantWrite(this.streamProcessor);
 
     // Connect DynamoDB stream to Lambda
-    streamProcessor.addEventSource(
+    this.streamProcessor.addEventSource(
       new lambdaEventSources.DynamoEventSource(this.statusHistoryTable, {
         startingPosition: lambda.StartingPosition.LATEST,
         batchSize: 1000,

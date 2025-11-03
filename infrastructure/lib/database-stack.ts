@@ -19,6 +19,9 @@ export class DatabaseStack extends cdk.Stack {
       partitionKey: { name: "GeoId", type: dynamodb.AttributeType.NUMBER },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true,
+      },
     });
 
     // TODO: break this table into partitions by years
@@ -27,6 +30,9 @@ export class DatabaseStack extends cdk.Stack {
       partitionKey: { name: "Timestamp", type: dynamodb.AttributeType.NUMBER },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true,
+      },
     });
 
     this.statusHistoryTable = new dynamodb.Table(this, "StatusHistoryTable", {
@@ -35,6 +41,9 @@ export class DatabaseStack extends cdk.Stack {
       sortKey: { name: "Timestamp", type: dynamodb.AttributeType.NUMBER },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+      pointInTimeRecoverySpecification: {
+        pointInTimeRecoveryEnabled: true,
+      },
     });
   }
 }

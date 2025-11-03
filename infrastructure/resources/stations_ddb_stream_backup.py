@@ -44,8 +44,7 @@ def lambda_handler(event, context):
             Bucket=BUCKET_NAME,
             Key=s3_key,
             Body=compressed_data,
-            ContentType='application/json',
-            ContentEncoding='gzip'
+            ContentType='application/gzip'
         )
         
         print(f"Uploaded {len(records)} records to s3://{BUCKET_NAME}/{s3_key}")

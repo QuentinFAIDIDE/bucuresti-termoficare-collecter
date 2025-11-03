@@ -7,6 +7,7 @@ import { LambdaStack } from "./lambda-stack";
 import { ApiStack } from "./api-stack";
 import { ScheduleStack } from "./schedule-stack";
 import { AlertsStack } from "./alerts-stack";
+import { LogsStack } from "./logs-stack";
 
 const app = new cdk.App();
 const envPrefix = app.node.tryGetContext("envPrefix") || "dev";
@@ -19,6 +20,11 @@ const env = {
 };
 
 const databaseStack = new DatabaseStack(app, "BucharestTermoficareDatabase", {
+  env,
+  envPrefix,
+});
+
+new LogsStack(app, "BucharestTermoficareLogs", {
   env,
   envPrefix,
 });

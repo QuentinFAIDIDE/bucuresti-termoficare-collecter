@@ -3,6 +3,7 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as ecr from "aws-cdk-lib/aws-ecr";
+import * as logs from "aws-cdk-lib/aws-logs";
 import { Construct } from "constructs";
 
 interface ApiStackProps extends cdk.StackProps {
@@ -23,6 +24,12 @@ export class ApiStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
 
+    const logGroup = logs.LogGroup.fromLogGroupName(
+      this,
+      "WebsiteBackendLogGroup",
+      `${props.envPrefix}-TermoficareWebsiteBackend`
+    );
+
     this.getCountsLambda = new lambda.Function(this, "GetCountsLambda", {
       code: lambda.Code.fromEcrImage(props.ecrRepository, {
         tagOrDigest: `api-getcounts-${props.version}`,
@@ -31,6 +38,7 @@ export class ApiStack extends cdk.Stack {
       runtime: lambda.Runtime.FROM_IMAGE,
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
+      logGroup,
       environment: {
         DYNAMODB_TABLE_DAY_COUNTS: props.dayCountsTable.tableName,
         ACCESS_CONTROL_ALLOW_ORIGIN: "*",
@@ -47,6 +55,7 @@ export class ApiStack extends cdk.Stack {
       runtime: lambda.Runtime.FROM_IMAGE,
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
+      logGroup,
       environment: {
         DYNAMODB_TABLE_STATIONS: props.stationsTable.tableName,
         ACCESS_CONTROL_ALLOW_ORIGIN: "*",
@@ -63,6 +72,7 @@ export class ApiStack extends cdk.Stack {
       runtime: lambda.Runtime.FROM_IMAGE,
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
+      logGroup,
       environment: {
         DYNAMODB_TABLE_STATUS_HISTORY: props.statusHistoryTable.tableName,
         ACCESS_CONTROL_ALLOW_ORIGIN: "*",

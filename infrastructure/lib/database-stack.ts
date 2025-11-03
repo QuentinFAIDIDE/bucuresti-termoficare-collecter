@@ -2,7 +2,7 @@ import * as cdk from "aws-cdk-lib";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
-
+import * as logs from "aws-cdk-lib/aws-logs";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
@@ -60,11 +60,18 @@ export class DatabaseStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
+    const streamLogGroup = logs.LogGroup.fromLogGroupName(
+      this,
+      "StreamProcessorLogGroup",
+      `${props.envPrefix}-TermoficareETLBackupStreamProcessor`
+    );
+
     // Lambda to process DynamoDB streams and write to S3
     this.streamProcessor = new lambda.Function(this, "StreamProcessor", {
       runtime: lambda.Runtime.PYTHON_3_11,
       handler: "stations_ddb_stream_backup.lambda_handler",
       code: lambda.Code.fromAsset("resources"),
+      logGroup: streamLogGroup,
       environment: {
         BACKUP_BUCKET: this.backupBucket.bucketName,
       },

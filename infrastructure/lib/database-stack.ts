@@ -1,5 +1,10 @@
 import * as cdk from "aws-cdk-lib";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
+
+import * as s3 from "aws-cdk-lib/aws-s3";
+import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
 
 interface DatabaseStackProps extends cdk.StackProps {
@@ -10,6 +15,7 @@ export class DatabaseStack extends cdk.Stack {
   public readonly stationsTable: dynamodb.Table;
   public readonly dayCountsTable: dynamodb.Table;
   public readonly statusHistoryTable: dynamodb.Table;
+  public readonly backupBucket: s3.Bucket;
 
   constructor(scope: Construct, id: string, props: DatabaseStackProps) {
     super(scope, id, props);
@@ -41,9 +47,39 @@ export class DatabaseStack extends cdk.Stack {
       sortKey: { name: "Timestamp", type: dynamodb.AttributeType.NUMBER },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+      stream: dynamodb.StreamViewType.NEW_IMAGE,
       pointInTimeRecoverySpecification: {
         pointInTimeRecoveryEnabled: true,
       },
     });
+
+    // S3 bucket for backups
+    this.backupBucket = new s3.Bucket(this, "BackupBucket", {
+      bucketName: `${props.envPrefix}-termoficare-backups`,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    // Lambda to process DynamoDB streams and write to S3
+    const streamProcessor = new lambda.Function(this, "StreamProcessor", {
+      runtime: lambda.Runtime.PYTHON_3_11,
+      handler: "stations_ddb_stream_backup.lambda_handler",
+      code: lambda.Code.fromAsset("resources"),
+      environment: {
+        BACKUP_BUCKET: this.backupBucket.bucketName,
+      },
+      timeout: cdk.Duration.seconds(30),
+    });
+
+    // Grant S3 permissions
+    this.backupBucket.grantWrite(streamProcessor);
+
+    // Connect DynamoDB stream to Lambda
+    streamProcessor.addEventSource(
+      new lambdaEventSources.DynamoEventSource(this.statusHistoryTable, {
+        startingPosition: lambda.StartingPosition.LATEST,
+        batchSize: 1000,
+        maxBatchingWindow: cdk.Duration.hours(1),
+      })
+    );
   }
 }

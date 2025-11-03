@@ -34,7 +34,8 @@ def lambda_handler(event, context):
     if records:
         # Create S3 key with daily partitioning
         now = datetime.utcnow()
-        s3_key = f"{now.strftime('%Y-%m-%d')}/batch_{now.strftime('%Y%m%d_%H%M%S')}.json.gz"
+        unix_timestamp = int(now.timestamp() * 1000)
+        s3_key = f"{now.strftime('%Y-%m-%d')}/batch_{unix_timestamp}.json.gz"
         
         # Compress and upload to S3
         json_data = json.dumps(records)

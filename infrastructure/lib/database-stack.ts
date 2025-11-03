@@ -78,7 +78,7 @@ export class DatabaseStack extends cdk.Stack {
       new lambdaEventSources.DynamoEventSource(this.statusHistoryTable, {
         startingPosition: lambda.StartingPosition.LATEST,
         batchSize: 1000,
-        maxBatchingWindow: cdk.Duration.hours(1),
+        maxBatchingWindow: cdk.Duration.seconds(300),
       })
     );
   }

@@ -23,28 +23,6 @@ import (
 
 var ErrDayBackupNotFound = errors.New("day backup not found")
 
-// listS3Objects lists all objects in the S3 bucket root folder
-func listS3Objects(ctx context.Context) ([]string, error) {
-	var objects []string
-
-	paginator := s3.NewListObjectsV2Paginator(s3Client, &s3.ListObjectsV2Input{
-		Bucket: aws.String(S3_BUCKET),
-	})
-
-	for paginator.HasMorePages() {
-		page, err := paginator.NextPage(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to list S3 objects: %w", err)
-		}
-
-		for _, obj := range page.Contents {
-			objects = append(objects, *obj.Key)
-		}
-	}
-
-	return objects, nil
-}
-
 // Handler processes EventBridge schedule rule events
 func Handler(ctx context.Context, event events.CloudWatchEvent) error {
 
@@ -54,23 +32,6 @@ func Handler(ctx context.Context, event events.CloudWatchEvent) error {
 	)
 
 	slog.Info("Starting rank stations processing")
-
-	// List all objects in S3 bucket root
-	objects, err := listS3Objects(ctx)
-	if err != nil {
-		slog.Error("Failed to list S3 objects", "error", err)
-		return err
-	}
-
-	slog.Info("Found S3 objects", "count", len(objects))
-	for _, obj := range objects {
-		slog.Info("S3 object", "key", obj)
-	}
-
-	availableDates := make(map[string]struct{})
-	for _, item := range objects {
-		availableDates[item] = struct{}{}
-	}
 
 	currentDayTimestamp := time.Now()
 	cutoffTimestamp := time.Now().AddDate(-1, 0, 0)
@@ -93,9 +54,6 @@ func Handler(ctx context.Context, event events.CloudWatchEvent) error {
 			break
 		}
 
-		if _, exists := availableDates[currentDateStr]; !exists {
-			return ErrDayBackupNotFound
-		}
 		err := appendDayBackupToDataset(ctx, dataset, currentDateStr)
 		if err != nil && err != ErrDayBackupNotFound {
 			return err
@@ -135,7 +93,7 @@ func Handler(ctx context.Context, event events.CloudWatchEvent) error {
 
 	stationsIncidentStats := scrapper.ComputeIncidentStatistics(filteredDataset)
 
-	err = writeStationsIncidentStats(ctx, stationsIncidentStats)
+	err := writeStationsIncidentStats(ctx, stationsIncidentStats)
 	if err != nil {
 		return err
 	}

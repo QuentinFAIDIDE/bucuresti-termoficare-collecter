@@ -15,6 +15,7 @@ export class DatabaseStack extends cdk.Stack {
   public readonly stationsTable: dynamodb.Table;
   public readonly dayCountsTable: dynamodb.Table;
   public readonly statusHistoryTable: dynamodb.Table;
+  public readonly stationsIncidentStatsTable: dynamodb.Table;
   public readonly backupBucket: s3.Bucket;
   public readonly streamProcessor: lambda.Function;
 
@@ -53,6 +54,21 @@ export class DatabaseStack extends cdk.Stack {
         pointInTimeRecoveryEnabled: true,
       },
     });
+
+    this.stationsIncidentStatsTable = new dynamodb.Table(
+      this,
+      "StationsIncidentStatsTable",
+      {
+        tableName: `${props.envPrefix}-stations-incident-stats`,
+        partitionKey: { name: "City", type: dynamodb.AttributeType.STRING },
+        sortKey: { name: "GeoId", type: dynamodb.AttributeType.NUMBER },
+        billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+        pointInTimeRecoverySpecification: {
+          pointInTimeRecoveryEnabled: true,
+        },
+      }
+    );
 
     // S3 bucket for backups
     this.backupBucket = new s3.Bucket(this, "BackupBucket", {

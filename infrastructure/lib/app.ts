@@ -42,12 +42,14 @@ const lambdaStack = new LambdaStack(app, "BucharestTermoficareLambda", {
   stationsTable: databaseStack.stationsTable,
   dayCountsTable: databaseStack.dayCountsTable,
   statusHistoryTable: databaseStack.statusHistoryTable,
+  stationsIncidentsStatsTable: databaseStack.stationsIncidentStatsTable,
+  backupBucket: databaseStack.backupBucket,
 });
 
 new ScheduleStack(app, "BucharestTermoficareSchedule", {
   env,
   envPrefix,
-  lambdaFunction: lambdaStack.lambdaFunction,
+  lambdaFunction: lambdaStack.etlLambda,
   scheduleExpression: "cron(0,30 * * * ? *)", // Every hour at minute 0 (UTC)
 });
 
@@ -69,7 +71,7 @@ if (envPrefix === "prod") {
   new AlertsStack(app, "BucharestTermoficareAlerts", {
     env,
     envPrefix,
-    etlLambdaFunction: lambdaStack.lambdaFunction,
+    etlLambdaFunction: lambdaStack.etlLambda,
     streamProcessorFunction: databaseStack.streamProcessor,
     alertEmail,
   });

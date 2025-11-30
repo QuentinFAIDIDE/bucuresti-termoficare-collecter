@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
-	"strings"
+	"sync"
 	"time"
 
 	"github.com/QuentinFAIDIDE/bucuresti-termoficare-collecter/scrapper"
@@ -19,6 +19,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"golang.org/x/sync/errgroup"
 )
 
 var ErrDayBackupNotFound = errors.New("day backup not found")
@@ -43,10 +45,10 @@ func Handler(ctx context.Context, event events.CloudWatchEvent) error {
 	for currentDayTimestamp.After(cutoffTimestamp) {
 
 		currentDateStr = currentDayTimestamp.Format("2006-01-02")
-		slog.Info("Querying data for day...", "day", currentDateStr)
+		slog.Info("Querying data for day...", "day", currentDateStr, "currentDatasetSize", len(dataset))
 
 		if missingBackupDays >= maxMissingBackupDays {
-			slog.Error(
+			slog.Warn(
 				"Reached maximimum number of days without data, aborting data fetch...",
 				"CurrentDatasetSize", len(dataset),
 				"maxDaysWithoutData", maxMissingBackupDays,
@@ -136,6 +138,8 @@ func appendDayBackupToDataset(ctx context.Context, dataset []scrapper.HeatingSta
 		return ErrDayBackupNotFound
 	}
 
+	slog.Info("Listing objects in folder", "folderName", dateStr)
+
 	// List all .json.gz files in the folder
 	paginator := s3.NewListObjectsV2Paginator(s3Client, &s3.ListObjectsV2Input{
 		Bucket: aws.String(S3_BUCKET),
@@ -143,60 +147,101 @@ func appendDayBackupToDataset(ctx context.Context, dataset []scrapper.HeatingSta
 	})
 
 	for paginator.HasMorePages() {
+
 		page, err := paginator.NextPage(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to list objects in folder %s: %w", dateStr, err)
 		}
 
-		for _, obj := range page.Contents {
-			if !strings.HasSuffix(*obj.Key, ".json.gz") {
-				slog.Warn("a file in the s3 folder was not of .json.gz file", "folderName", dateStr)
-				continue
-			}
+		slog.Info("objects found in folder page", "folderName", dateStr, "numObjects", len(page.Contents))
 
-			// Download file
-			getResult, err := s3Client.GetObject(ctx, &s3.GetObjectInput{
-				Bucket: aws.String(S3_BUCKET),
-				Key:    obj.Key,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to download file %s: %w", *obj.Key, err)
-			}
-			defer getResult.Body.Close()
+		// Create channels for concurrent processing
+		objChan := make(chan types.Object)
+		resultMutex := sync.Mutex{}
 
-			// Extract gzip
-			gzReader, err := gzip.NewReader(getResult.Body)
-			if err != nil {
-				return fmt.Errorf("failed to create gzip reader for %s: %w", *obj.Key, err)
-			}
-			defer gzReader.Close()
-
-			// Parse entire JSON array
-			var records []BackupRecord
-			decoder := json.NewDecoder(gzReader)
-			if err := decoder.Decode(&records); err != nil {
-				return fmt.Errorf("failed to parse JSON from %s: %w", *obj.Key, err)
-			}
-
-			// Convert all records to HeatingStationStatus
-			for _, record := range records {
-				status := scrapper.HeatingStationStatus{
-					GeoId:            record.Item.GeoId,
-					Name:             record.Item.Name,
-					Latitude:         record.Item.Latitude,
-					Longitude:        record.Item.Longitude,
-					Status:           record.Item.Status,
-					IncidentText:     record.Item.IncidentText,
-					IncidentType:     record.Item.IncidentType,
-					FetchTime:        record.Item.Timestamp,
-					EstimatedFixDate: record.Item.EstimatedFixDate,
+		errG, errCtx := errgroup.WithContext(ctx)
+		errG.Go(func() error {
+			for obj := range objChan {
+				records, err := processS3Object(errCtx, &obj)
+				if err != nil {
+					return err
 				}
-				dataset = append(dataset, status)
+				resultMutex.Lock()
+				dataset = append(dataset, records...)
+				resultMutex.Unlock()
 			}
+			return nil
+		})
+
+		sentIndex := 0
+
+	PUSH_FOR:
+		for {
+			select {
+			case <-errCtx.Done():
+				break PUSH_FOR
+			default:
+				if sentIndex < len(page.Contents) {
+					objChan <- page.Contents[sentIndex]
+					sentIndex++
+				} else {
+					break PUSH_FOR
+				}
+			}
+		}
+		close(objChan)
+
+		if err := errG.Wait(); err != nil {
+			return fmt.Errorf("failed to download s3 data: %w", err)
 		}
 	}
 
 	return nil
+}
+
+func processS3Object(ctx context.Context, obj *types.Object) ([]scrapper.HeatingStationStatus, error) {
+	// Download file
+	getResult, err := s3Client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(S3_BUCKET),
+		Key:    obj.Key,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to download file %s: %w", *obj.Key, err)
+	}
+	defer getResult.Body.Close()
+
+	// Extract gzip
+	gzReader, err := gzip.NewReader(getResult.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gzip reader for %s: %w", *obj.Key, err)
+	}
+	defer gzReader.Close()
+
+	// Parse entire JSON array
+	var records []BackupRecord
+	decoder := json.NewDecoder(gzReader)
+	if err := decoder.Decode(&records); err != nil {
+		return nil, fmt.Errorf("failed to parse JSON from %s: %w", *obj.Key, err)
+	}
+
+	// Convert all records to HeatingStationStatus
+	statuses := make([]scrapper.HeatingStationStatus, 0, len(records))
+	for _, record := range records {
+		status := scrapper.HeatingStationStatus{
+			GeoId:            record.Item.GeoId,
+			Name:             record.Item.Name,
+			Latitude:         record.Item.Latitude,
+			Longitude:        record.Item.Longitude,
+			Status:           record.Item.Status,
+			IncidentText:     record.Item.IncidentText,
+			IncidentType:     record.Item.IncidentType,
+			FetchTime:        record.Item.Timestamp,
+			EstimatedFixDate: record.Item.EstimatedFixDate,
+		}
+		statuses = append(statuses, status)
+	}
+
+	return statuses, nil
 }
 
 func loadDDBBackup(ctx context.Context, dataset []scrapper.HeatingStationStatus) error {

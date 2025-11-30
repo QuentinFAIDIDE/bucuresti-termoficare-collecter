@@ -57,7 +57,7 @@ func Handler(ctx context.Context, event events.CloudWatchEvent) error {
 			break
 		}
 
-		err := appendDayBackupToDataset(ctx, dataset, currentDateStr)
+		err := appendDayBackupToDataset(ctx, &dataset, currentDateStr)
 		if err != nil && err != ErrDayBackupNotFound {
 			return err
 		}
@@ -80,7 +80,7 @@ func Handler(ctx context.Context, event events.CloudWatchEvent) error {
 		if lastDayWithData == lastDayWithDataInBackups {
 			slog.Info("earliest date in s3 kinesis backup is right after the full db backup, reading the full db backup")
 			// we load the db backup file for the dates before
-			err := loadDDBBackup(ctx, dataset)
+			err := loadDDBBackup(ctx, &dataset)
 			if err != nil {
 				return err
 			}
@@ -124,7 +124,7 @@ type BackupRecord struct {
 	} `json:"item"`
 }
 
-func appendDayBackupToDataset(ctx context.Context, dataset []scrapper.HeatingStationStatus, dateStr string) error {
+func appendDayBackupToDataset(ctx context.Context, dataset *[]scrapper.HeatingStationStatus, dateStr string) error {
 	// Check if folder exists
 	result, err := s3Client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
 		Bucket:  aws.String(S3_BUCKET),
@@ -167,7 +167,7 @@ func appendDayBackupToDataset(ctx context.Context, dataset []scrapper.HeatingSta
 					return err
 				}
 				resultMutex.Lock()
-				dataset = append(dataset, records...)
+				*dataset = append(*dataset, records...)
 				resultMutex.Unlock()
 			}
 			return nil
@@ -244,7 +244,7 @@ func processS3Object(ctx context.Context, obj *types.Object) ([]scrapper.Heating
 	return statuses, nil
 }
 
-func loadDDBBackup(ctx context.Context, dataset []scrapper.HeatingStationStatus) error {
+func loadDDBBackup(ctx context.Context, dataset *[]scrapper.HeatingStationStatus) error {
 	// Fetch dynamodb_backup.csv.gz from S3 root
 	getResult, err := s3Client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(S3_BUCKET),
@@ -314,7 +314,7 @@ func loadDDBBackup(ctx context.Context, dataset []scrapper.HeatingStationStatus)
 			FetchTime:        timestamp,
 			EstimatedFixDate: estimatedFixDate,
 		}
-		dataset = append(dataset, status)
+		*dataset = append(*dataset, status)
 	}
 
 	return nil

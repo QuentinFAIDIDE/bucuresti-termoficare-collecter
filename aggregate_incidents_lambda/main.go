@@ -329,7 +329,7 @@ func writeStationsIncidentStats(ctx context.Context, stats []scrapper.StationInc
 		}
 
 		_, err = dbClient.PutItem(ctx, &dynamodb.PutItemInput{
-			TableName: aws.String("StationIncidentsStats"),
+			TableName: aws.String(DYNAMODB_TABLE_STATIONS),
 			Item:      item,
 		})
 		if err != nil {

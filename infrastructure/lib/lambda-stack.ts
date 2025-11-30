@@ -61,7 +61,7 @@ export class LambdaStack extends cdk.Stack {
       handler: lambda.Handler.FROM_IMAGE,
       runtime: lambda.Runtime.FROM_IMAGE,
       timeout: cdk.Duration.minutes(5),
-      memorySize: 512,
+      memorySize: 4096,
       logGroup: aggregatorLogGroup,
       environment: {
         DYNAMODB_TABLE_STATIONS: props.stationsIncidentsStatsTable.tableName,

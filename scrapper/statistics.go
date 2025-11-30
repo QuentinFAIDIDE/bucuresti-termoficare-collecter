@@ -1,6 +1,8 @@
 package scrapper
 
 import (
+	"log/slog"
+	"math"
 	"slices"
 	"time"
 )
@@ -89,11 +91,35 @@ func aggregateIncidentDurations(stats StationIncidentsData) StationIncidentStats
 	rangeDurationMonths = rangeDurationHours / (hoursPerDay * avgDaysPerMonth)
 	numIncidents = float64(len(stats.IncidentsDurationsHours))
 
+	if rangeDurationHours <= math.SmallestNonzeroFloat32 {
+		slog.Warn(
+			"Duration for station measurements is at or below zero",
+			"geoId", stats.GeoId,
+			"lastName", stats.Name,
+			"rangeDurationHours", rangeDurationHours,
+			"rangeDurationMonths", rangeDurationMonths,
+			"firstDate", stats.FirstDate,
+			"lastDate", stats.LastDate,
+		)
+	}
+
 	for i := range stats.IncidentsDurationsHours {
+		// compute total
 		totalIncidentsHours += stats.IncidentsDurationsHours[i]
+		// compute max
 		if stats.IncidentsDurationsHours[i] > maxIncidentTimeHours {
 			maxIncidentTimeHours = stats.IncidentsDurationsHours[i]
 		}
+	}
+
+	var avgMonthlyIncidentTimeHours float32
+	if rangeDurationMonths > math.SmallestNonzeroFloat32 {
+		avgMonthlyIncidentTimeHours = float32(totalIncidentsHours) / float32(rangeDurationMonths)
+	}
+
+	var avgIncidentTimeHours float32
+	if numIncidents > math.SmallestNonzeroFloat32 {
+		avgIncidentTimeHours = float32(totalIncidentsHours) / float32(numIncidents)
 	}
 
 	return StationIncidentStatsDbRow{
@@ -102,9 +128,9 @@ func aggregateIncidentDurations(stats StationIncidentsData) StationIncidentStats
 		LastName:                    stats.Name,
 		Latitude:                    stats.Latitude,
 		Longitude:                   stats.Longitude,
-		AvgMonthlyIncidentTimeHours: float32(totalIncidentsHours) / float32(rangeDurationMonths),
+		AvgMonthlyIncidentTimeHours: avgMonthlyIncidentTimeHours,
 		MaxIncidentTimeHours:        float32(maxIncidentTimeHours),
-		AvgIncidentTimeHours:        float32(totalIncidentsHours / numIncidents),
+		AvgIncidentTimeHours:        avgIncidentTimeHours,
 	}
 }
 

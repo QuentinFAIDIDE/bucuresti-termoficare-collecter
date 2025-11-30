@@ -31,7 +31,7 @@ func Handler(ctx context.Context, event events.CloudWatchEvent) error {
 		lastDayWithDataInBackups = "2025-11-03"
 	)
 
-	slog.Info("Starting rank stations processing")
+	slog.Info("Starting rank stations processing...")
 
 	currentDayTimestamp := time.Now()
 	cutoffTimestamp := time.Now().AddDate(-1, 0, 0)
@@ -43,6 +43,7 @@ func Handler(ctx context.Context, event events.CloudWatchEvent) error {
 	for currentDayTimestamp.After(cutoffTimestamp) {
 
 		currentDateStr = currentDayTimestamp.Format("2006-01-02")
+		slog.Info("Querying data for day...", "day", currentDateStr)
 
 		if missingBackupDays >= maxMissingBackupDays {
 			slog.Error(
@@ -72,8 +73,10 @@ func Handler(ctx context.Context, event events.CloudWatchEvent) error {
 
 	// if we didnt get a year of data from the daily backups
 	if currentDayTimestamp.After(cutoffTimestamp) {
+		slog.Info("The earliest data in s3 kinesis backup is earlier than one year ago, more data is required")
 		// if its because we reached the period before the automated backups
 		if lastDayWithData == lastDayWithDataInBackups {
+			slog.Info("earliest date in s3 kinesis backup is right after the full db backup, reading the full db backup")
 			// we load the db backup file for the dates before
 			err := loadDDBBackup(ctx, dataset)
 			if err != nil {
@@ -89,10 +92,13 @@ func Handler(ctx context.Context, event events.CloudWatchEvent) error {
 		}
 	}
 
-	filteredDataset := scrapper.FilterDataset(dataset, cutoffTimestamp)
+	slog.Info("Stations status history loaded in memory, filtering last year of data", "numRows", len(dataset))
+	dataset = scrapper.FilterDataset(dataset, cutoffTimestamp)
 
-	stationsIncidentStats := scrapper.ComputeIncidentStatistics(filteredDataset)
+	slog.Info("Filtered stations by date, proceeding with incident computations", "numRows", len(dataset))
+	stationsIncidentStats := scrapper.ComputeIncidentStatistics(dataset)
 
+	slog.Info("Incident statistics computed, writing to dynamodb", "numRows", len(stationsIncidentStats))
 	err := writeStationsIncidentStats(ctx, stationsIncidentStats)
 	if err != nil {
 		return err

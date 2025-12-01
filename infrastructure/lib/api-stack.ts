@@ -39,7 +39,7 @@ export class ApiStack extends cdk.Stack {
       handler: lambda.Handler.FROM_IMAGE,
       runtime: lambda.Runtime.FROM_IMAGE,
       timeout: cdk.Duration.seconds(30),
-      memorySize: 256,
+      memorySize: 128,
       logGroup,
       environment: {
         DYNAMODB_TABLE_DAY_COUNTS: props.dayCountsTable.tableName,
@@ -56,7 +56,7 @@ export class ApiStack extends cdk.Stack {
       handler: lambda.Handler.FROM_IMAGE,
       runtime: lambda.Runtime.FROM_IMAGE,
       timeout: cdk.Duration.seconds(30),
-      memorySize: 256,
+      memorySize: 128,
       logGroup,
       environment: {
         DYNAMODB_TABLE_STATIONS: props.stationsTable.tableName,
@@ -66,39 +66,50 @@ export class ApiStack extends cdk.Stack {
 
     props.stationsTable.grantReadData(this.getStationsLambda);
 
-    this.getStationDetailsLambda = new lambda.Function(this, "GetStationDetailsLambda", {
-      code: lambda.Code.fromEcrImage(props.ecrRepository, {
-        tagOrDigest: `api-getstationdetails-${props.version}`,
-      }),
-      handler: lambda.Handler.FROM_IMAGE,
-      runtime: lambda.Runtime.FROM_IMAGE,
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 256,
-      logGroup,
-      environment: {
-        DYNAMODB_TABLE_STATUS_HISTORY: props.statusHistoryTable.tableName,
-        ACCESS_CONTROL_ALLOW_ORIGIN: "*",
-      },
-    });
+    this.getStationDetailsLambda = new lambda.Function(
+      this,
+      "GetStationDetailsLambda",
+      {
+        code: lambda.Code.fromEcrImage(props.ecrRepository, {
+          tagOrDigest: `api-getstationdetails-${props.version}`,
+        }),
+        handler: lambda.Handler.FROM_IMAGE,
+        runtime: lambda.Runtime.FROM_IMAGE,
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 128,
+        logGroup,
+        environment: {
+          DYNAMODB_TABLE_STATUS_HISTORY: props.statusHistoryTable.tableName,
+          ACCESS_CONTROL_ALLOW_ORIGIN: "*",
+        },
+      }
+    );
 
     props.statusHistoryTable.grantReadData(this.getStationDetailsLambda);
 
-    this.getStationsStatsLambda = new lambda.Function(this, "GetStationsStatsLambda", {
-      code: lambda.Code.fromEcrImage(props.ecrRepository, {
-        tagOrDigest: `api-getstationsstats-${props.version}`,
-      }),
-      handler: lambda.Handler.FROM_IMAGE,
-      runtime: lambda.Runtime.FROM_IMAGE,
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 256,
-      logGroup,
-      environment: {
-        DYNAMODB_TABLE_STATIONS_STATS: props.stationsIncidentsStatsTable.tableName,
-        ACCESS_CONTROL_ALLOW_ORIGIN: "*",
-      },
-    });
+    this.getStationsStatsLambda = new lambda.Function(
+      this,
+      "GetStationsStatsLambda",
+      {
+        code: lambda.Code.fromEcrImage(props.ecrRepository, {
+          tagOrDigest: `api-getstationsstats-${props.version}`,
+        }),
+        handler: lambda.Handler.FROM_IMAGE,
+        runtime: lambda.Runtime.FROM_IMAGE,
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 128,
+        logGroup,
+        environment: {
+          DYNAMODB_TABLE_STATIONS_STATS:
+            props.stationsIncidentsStatsTable.tableName,
+          ACCESS_CONTROL_ALLOW_ORIGIN: "*",
+        },
+      }
+    );
 
-    props.stationsIncidentsStatsTable.grantReadData(this.getStationsStatsLambda);
+    props.stationsIncidentsStatsTable.grantReadData(
+      this.getStationsStatsLambda
+    );
 
     this.apiGateway = new apigateway.RestApi(this, "TermoficareApi", {
       restApiName: `${props.envPrefix}-termoficare-api`,
@@ -126,41 +137,43 @@ export class ApiStack extends cdk.Stack {
       new apigateway.LambdaIntegration(this.getStationsLambda)
     );
 
-    const stationDetailsResource = this.apiGateway.root.addResource("station-details");
+    const stationDetailsResource =
+      this.apiGateway.root.addResource("station-details");
     stationDetailsResource.addMethod(
       "GET",
       new apigateway.LambdaIntegration(this.getStationDetailsLambda)
     );
 
-    const stationsStatsResource = this.apiGateway.root.addResource("stations-stats");
+    const stationsStatsResource =
+      this.apiGateway.root.addResource("stations-stats");
     stationsStatsResource.addMethod(
       "GET",
       new apigateway.LambdaIntegration(this.getStationsStatsLambda)
     );
 
-    new cdk.CfnOutput(this, 'ApiUrl', {
+    new cdk.CfnOutput(this, "ApiUrl", {
       value: this.apiGateway.url,
-      description: 'API Gateway URL',
+      description: "API Gateway URL",
     });
 
-    new cdk.CfnOutput(this, 'CountsEndpoint', {
+    new cdk.CfnOutput(this, "CountsEndpoint", {
       value: `${this.apiGateway.url}counts`,
-      description: 'Counts API endpoint',
+      description: "Counts API endpoint",
     });
 
-    new cdk.CfnOutput(this, 'StationsEndpoint', {
+    new cdk.CfnOutput(this, "StationsEndpoint", {
       value: `${this.apiGateway.url}stations`,
-      description: 'Stations API endpoint',
+      description: "Stations API endpoint",
     });
 
-    new cdk.CfnOutput(this, 'StationDetailsEndpoint', {
+    new cdk.CfnOutput(this, "StationDetailsEndpoint", {
       value: `${this.apiGateway.url}station-details?geoId=123`,
-      description: 'Station details API endpoint (with geoId parameter)',
+      description: "Station details API endpoint (with geoId parameter)",
     });
 
-    new cdk.CfnOutput(this, 'StationsStatsEndpoint', {
+    new cdk.CfnOutput(this, "StationsStatsEndpoint", {
       value: `${this.apiGateway.url}stations-stats`,
-      description: 'Stations statistics API endpoint',
+      description: "Stations statistics API endpoint",
     });
   }
 }

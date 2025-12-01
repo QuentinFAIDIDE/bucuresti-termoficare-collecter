@@ -75,6 +75,7 @@ if (envPrefix === "prod") {
     envPrefix,
     etlLambdaFunction: lambdaStack.etlLambda,
     streamProcessorFunction: databaseStack.streamProcessor,
+    aggregateLambdaFunction: lambdaStack.aggregateLambda,
     alertEmail,
   });
 }

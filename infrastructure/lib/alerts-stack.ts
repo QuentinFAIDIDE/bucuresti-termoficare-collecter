@@ -10,6 +10,7 @@ interface AlertsStackProps extends cdk.StackProps {
   envPrefix: string;
   etlLambdaFunction: lambda.Function;
   streamProcessorFunction: lambda.Function;
+  aggregateLambdaFunction: lambda.Function;
   alertEmail: string;
 }
 
@@ -71,5 +72,40 @@ export class AlertsStack extends cdk.Stack {
       }
     );
     streamErrorAlarm.addAlarmAction(new cloudwatchActions.SnsAction(topic));
+
+    // Aggregate lambda alerts
+    const aggregateErrorAlarm = new cloudwatch.Alarm(
+      this,
+      "AggregateLambdaErrorAlarm",
+      {
+        alarmName: `${props.envPrefix}-aggregate-lambda-errors`,
+        metric: props.aggregateLambdaFunction.metricErrors({
+          period: cdk.Duration.minutes(5),
+        }),
+        threshold: 1,
+        evaluationPeriods: 1,
+        datapointsToAlarm: 1,
+        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+      }
+    );
+    aggregateErrorAlarm.addAlarmAction(new cloudwatchActions.SnsAction(topic));
+
+    const aggregateMissingExecutionAlarm = new cloudwatch.Alarm(
+      this,
+      "AggregateLambdaMissingExecutionAlarm",
+      {
+        alarmName: `${props.envPrefix}-aggregate-lambda-missing-execution`,
+        metric: props.aggregateLambdaFunction.metricInvocations({
+          period: cdk.Duration.days(2),
+        }),
+        threshold: 1,
+        comparisonOperator: cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
+        evaluationPeriods: 1,
+        treatMissingData: cloudwatch.TreatMissingData.BREACHING,
+      }
+    );
+    aggregateMissingExecutionAlarm.addAlarmAction(
+      new cloudwatchActions.SnsAction(topic)
+    );
   }
 }

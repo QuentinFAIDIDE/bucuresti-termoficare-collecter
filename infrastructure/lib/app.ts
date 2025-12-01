@@ -49,7 +49,7 @@ const lambdaStack = new LambdaStack(app, "BucharestTermoficareLambda", {
 new ScheduleStack(app, "BucharestTermoficareSchedule", {
   env,
   envPrefix,
-  lambdaFunction: lambdaStack.etlLambda,
+  etlLambda: lambdaStack.etlLambda,
   scheduleExpression: "cron(0,30 * * * ? *)", // Every hour at minute 0 (UTC)
 });
 

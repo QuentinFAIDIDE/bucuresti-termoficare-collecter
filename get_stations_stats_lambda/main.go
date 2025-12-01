@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/QuentinFAIDIDE/bucuresti-termoficare-collecter/scrapper"
 	"github.com/aws/aws-lambda-go/events"
@@ -19,11 +20,23 @@ var (
 	ACCESS_CONTROL_ALLOW_ORIGIN   string
 )
 
-type ApiResponseData struct {
-	Data []scrapper.StationIncidentStatsDbRow `json:"data"`
+type StationIncidentStatsAPI struct {
+	City                        string  `json:"city"`
+	Rank                        int     `json:"rank"`
+	GeoId                       string  `json:"geoId"`
+	LastName                    string  `json:"lastName"`
+	Latitude                    float64 `json:"latitude"`
+	Longitude                   float64 `json:"longitude"`
+	AvgMonthlyIncidentTimeHours float32 `json:"avgMonthlyIncidentTimeHours"`
+	AvgIncidentTimeHours        float32 `json:"avgIncidentTimeHours"`
+	MaxIncidentTimeHours        float32 `json:"maxIncidentTimeHours"`
 }
 
-func getStationsStats(ctx context.Context) ([]scrapper.StationIncidentStatsDbRow, error) {
+type ApiResponseData struct {
+	Data []StationIncidentStatsAPI `json:"data"`
+}
+
+func getStationsStats(ctx context.Context) ([]StationIncidentStatsAPI, error) {
 
 	var lastKey map[string]types.AttributeValue
 	allStats := make([]scrapper.StationIncidentStatsDbRow, 0, 1024)
@@ -60,7 +73,23 @@ func getStationsStats(ctx context.Context) ([]scrapper.StationIncidentStatsDbRow
 		lastKey = result.LastEvaluatedKey
 	}
 
-	return allStats, nil
+	// Convert to API format with string geoId
+	apiStats := make([]StationIncidentStatsAPI, len(allStats))
+	for i, stat := range allStats {
+		apiStats[i] = StationIncidentStatsAPI{
+			City:                        stat.City,
+			Rank:                        stat.Rank,
+			GeoId:                       fmt.Sprintf("%d", stat.GeoId),
+			LastName:                    stat.LastName,
+			Latitude:                    stat.Latitude,
+			Longitude:                   stat.Longitude,
+			AvgMonthlyIncidentTimeHours: stat.AvgMonthlyIncidentTimeHours,
+			AvgIncidentTimeHours:        stat.AvgIncidentTimeHours,
+			MaxIncidentTimeHours:        stat.MaxIncidentTimeHours,
+		}
+	}
+
+	return apiStats, nil
 }
 
 func Handler(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {

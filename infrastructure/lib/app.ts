@@ -62,6 +62,7 @@ new ApiStack(app, "BucharestTermoficareApi", {
   dayCountsTable: databaseStack.dayCountsTable,
   stationsTable: databaseStack.stationsTable,
   statusHistoryTable: databaseStack.statusHistoryTable,
+  stationsIncidentsStatsTable: databaseStack.stationsIncidentStatsTable,
 });
 
 if (envPrefix === "prod") {

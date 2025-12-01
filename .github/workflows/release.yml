@@ -18,6 +18,8 @@ jobs:
             tag: api-getstations
           - dockerfile: get_station_details_lambda.Dockerfile
             tag: api-getstationdetails
+          - dockerfile: get_stations_stats_lambda.Dockerfile
+            tag: api-getstationsstats
           - dockerfile: aggregate_incidents_lambda.Dockerfile
             tag: aggregate
 

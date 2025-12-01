@@ -13,6 +13,7 @@ interface ApiStackProps extends cdk.StackProps {
   dayCountsTable: dynamodb.Table;
   stationsTable: dynamodb.Table;
   statusHistoryTable: dynamodb.Table;
+  stationsIncidentsStatsTable: dynamodb.Table;
 }
 
 export class ApiStack extends cdk.Stack {
@@ -20,6 +21,7 @@ export class ApiStack extends cdk.Stack {
   public readonly getCountsLambda: lambda.Function;
   public readonly getStationsLambda: lambda.Function;
   public readonly getStationDetailsLambda: lambda.Function;
+  public readonly getStationsStatsLambda: lambda.Function;
 
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
@@ -81,6 +83,23 @@ export class ApiStack extends cdk.Stack {
 
     props.statusHistoryTable.grantReadData(this.getStationDetailsLambda);
 
+    this.getStationsStatsLambda = new lambda.Function(this, "GetStationsStatsLambda", {
+      code: lambda.Code.fromEcrImage(props.ecrRepository, {
+        tagOrDigest: `api-getstationsstats-${props.version}`,
+      }),
+      handler: lambda.Handler.FROM_IMAGE,
+      runtime: lambda.Runtime.FROM_IMAGE,
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 256,
+      logGroup,
+      environment: {
+        DYNAMODB_TABLE_STATIONS_STATS: props.stationsIncidentsStatsTable.tableName,
+        ACCESS_CONTROL_ALLOW_ORIGIN: "*",
+      },
+    });
+
+    props.stationsIncidentsStatsTable.grantReadData(this.getStationsStatsLambda);
+
     this.apiGateway = new apigateway.RestApi(this, "TermoficareApi", {
       restApiName: `${props.envPrefix}-termoficare-api`,
       defaultCorsPreflightOptions: {
@@ -113,6 +132,12 @@ export class ApiStack extends cdk.Stack {
       new apigateway.LambdaIntegration(this.getStationDetailsLambda)
     );
 
+    const stationsStatsResource = this.apiGateway.root.addResource("stations-stats");
+    stationsStatsResource.addMethod(
+      "GET",
+      new apigateway.LambdaIntegration(this.getStationsStatsLambda)
+    );
+
     new cdk.CfnOutput(this, 'ApiUrl', {
       value: this.apiGateway.url,
       description: 'API Gateway URL',
@@ -131,6 +156,11 @@ export class ApiStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'StationDetailsEndpoint', {
       value: `${this.apiGateway.url}station-details?geoId=123`,
       description: 'Station details API endpoint (with geoId parameter)',
+    });
+
+    new cdk.CfnOutput(this, 'StationsStatsEndpoint', {
+      value: `${this.apiGateway.url}stations-stats`,
+      description: 'Stations statistics API endpoint',
     });
   }
 }

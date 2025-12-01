@@ -80,7 +80,7 @@ func Handler(ctx context.Context, event events.CloudWatchEvent) error {
 		if lastDayWithData == lastDayWithDataInBackups {
 			slog.Info("earliest date in s3 kinesis backup is right after the full db backup, reading the full db backup")
 			// we load the db backup file for the dates before
-			err := loadDDBBackup(ctx, &dataset)
+			err := loadDDBBackup(ctx, &dataset, cutoffTimestamp)
 			if err != nil {
 				return err
 			}
@@ -93,9 +93,6 @@ func Handler(ctx context.Context, event events.CloudWatchEvent) error {
 			return errors.New("a gap in the stations status history was found, please implement a gap-friendly algorithm")
 		}
 	}
-
-	slog.Info("Stations status history loaded in memory, filtering last year of data", "numRows", len(dataset))
-	dataset = scrapper.FilterDataset(dataset, cutoffTimestamp)
 
 	slog.Info("Filtered stations by date, proceeding with incident computations", "numRows", len(dataset))
 	stationsIncidentStats := scrapper.ComputeIncidentStatistics(dataset)
@@ -244,7 +241,7 @@ func processS3Object(ctx context.Context, obj *types.Object) ([]scrapper.Heating
 	return statuses, nil
 }
 
-func loadDDBBackup(ctx context.Context, dataset *[]scrapper.HeatingStationStatus) error {
+func loadDDBBackup(ctx context.Context, dataset *[]scrapper.HeatingStationStatus, cutoffTime time.Time) error {
 	// Fetch dynamodb_backup.csv.gz from S3 root
 	getResult, err := s3Client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(S3_BUCKET),
@@ -303,18 +300,20 @@ func loadDDBBackup(ctx context.Context, dataset *[]scrapper.HeatingStationStatus
 			return fmt.Errorf("failed to parse EstimatedFixDate: %w", err)
 		}
 
-		status := scrapper.HeatingStationStatus{
-			GeoId:            geoId,
-			Name:             row[columnMap["Name"]],
-			Latitude:         latitude,
-			Longitude:        longitude,
-			Status:           row[columnMap["Status"]],
-			IncidentText:     row[columnMap["IncidentText"]],
-			IncidentType:     row[columnMap["IncidentType"]],
-			FetchTime:        timestamp,
-			EstimatedFixDate: estimatedFixDate,
+		if cutoffTime.Before(time.Unix(timestamp, 0)) {
+			status := scrapper.HeatingStationStatus{
+				GeoId:            geoId,
+				Name:             row[columnMap["Name"]],
+				Latitude:         latitude,
+				Longitude:        longitude,
+				Status:           row[columnMap["Status"]],
+				IncidentText:     row[columnMap["IncidentText"]],
+				IncidentType:     row[columnMap["IncidentType"]],
+				FetchTime:        timestamp,
+				EstimatedFixDate: estimatedFixDate,
+			}
+			*dataset = append(*dataset, status)
 		}
-		*dataset = append(*dataset, status)
 	}
 
 	return nil

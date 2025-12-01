@@ -50,6 +50,7 @@ new ScheduleStack(app, "BucharestTermoficareSchedule", {
   env,
   envPrefix,
   etlLambda: lambdaStack.etlLambda,
+  aggregateLambda: lambdaStack.aggregateLambda,
   scheduleExpression: "cron(0,30 * * * ? *)", // Every hour at minute 0 (UTC)
 });
 
